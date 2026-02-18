@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ t('history') }} - SocialPay{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard" class="back-btn">←</a>
+  <div class="page-title-wrap"><div class="page-title">📊 {{ t('history') }}</div></div>
+</div>
+<div style="padding:14px 14px 40px">
+  {% if submissions %}
+    {% for s in submissions %}
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="width:44px;height:44px;border-radius:14px;background:{% if s.status=='approved' %}linear-gradient(135deg,#06D6A0,#0ba360){% elif s.status=='rejected' %}linear-gradient(135deg,#EF233C,#b5003a){% else %}linear-gradient(135deg,#FFD166,#F77F00){% endif %};display:flex;align-items:center;justify-content:center;font-size:20px;color:white">
+          {% if s.status=='approved' %}✅{% elif s.status=='rejected' %}❌{% else %}⏳{% endif %}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:700">{{ s.task_title }}</div>
+          <div style="font-size:12px;color:var(--muted)">{{ s.task_platform }} • {{ s.submitted_at[:16] if s.submitted_at else '' }}</div>
+        </div>
+        {% if s.status=='approved' %}
+        <span class="badge badge-success">+{% if s.currency=='dollar' %}${{ "%.4f"|format(s.reward) }}{% else %}₦{{ "%.0f"|format(s.reward) }}{% endif %}</span>
+        {% elif s.status=='rejected' %}
+        <span class="badge badge-danger">{{ t('rejected') }}</span>
+        {% else %}
+        <span class="badge badge-warning">{{ t('pending') }}</span>
+        {% endif %}
+      </div>
+      {% if s.note %}<div class="alert alert-info" style="margin-bottom:0;font-size:13px">💬 {{ s.note }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No submissions yet</div><div class="empty-desc">Complete tasks to see your history.</div><a href="/tasks" class="btn btn-primary" style="margin-top:20px;width:auto;display:inline-block;padding:12px 24px">📋 View Tasks</a></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ t('profile') }} - SocialPay{% endblock %}
+{% block content %}
+<div class="page-header">
+  <a href="/dashboard" class="back-btn">←</a>
+  <div class="page-title-wrap"><div class="page-title">👤 {{ t('profile') }}</div></div>
+</div>
+<div class="page-content" style="padding:14px 14px 80px">
+
+  <!-- PROFILE HEADER -->
+  <div class="card" style="background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white;text-align:center;margin-bottom:14px">
+    <div style="width:80px;height:80px;background:rgba(255,255,255,0.18);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 12px">👤</div>
+    <div style="font-size:20px;font-weight:800">{{ user.name }}</div>
+    <div style="opacity:0.8;font-size:13px;margin-top:4px">{{ user.email }}</div>
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <span class="badge" style="background:rgba(255,255,255,0.2);color:white">🆔 {{ user.id }}</span>
+      {% if user.verified %}<span class="badge" style="background:rgba(6,214,160,0.3);color:white">✅ Verified</span>{% endif %}
+    </div>
+  </div>
+
+  <!-- LANG -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px">🌍 {{ t('select_language') }}</div>
+    <div style="display:flex;gap:8px">
+      <a href="/set_lang/en" class="btn btn-sm {% if lang=='en' %}btn-primary{% else %}btn-outline{% endif %}">🇬🇧 English</a>
+      <a href="/set_lang/ar" class="btn btn-sm {% if lang=='ar' %}btn-primary{% else %}btn-outline{% endif %}">🇸🇦 العربية</a>
+      <a href="/set_lang/ha" class="btn btn-sm {% if lang=='ha' %}btn-primary{% else %}btn-outline{% endif %}">🇳🇬 Hausa</a>
+    </div>
+  </div>
+
+  <!-- EDIT PROFILE -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;margin-bottom:14px">✏️ {{ t('edit_profile') }}</div>
+    <div class="form-group">
+      <label class="form-label">{{ t('full_name') }}</label>
+      <input type="text" class="form-control" id="p-name" value="{{ user.name }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('old_password') }}</label>
+      <input type="password" class="form-control" id="p-opw" placeholder="Current password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('new_password') }}</label>
+      <input type="password" class="form-control" id="p-npw" placeholder="New password">
+    </div>
+    <button class="btn btn-primary" id="p-btn" onclick="saveProfile()">💾 {{ t('save') }}</button>
+  </div>
+
+  <!-- BANK DETAILS -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;margin-bottom:14px">🏦 {{ t('bank_details') }}</div>
+    <div class="form-group">
+      <label class="form-label">{{ t('payment_type') }}</label>
+      <select class="form-control" id="b-type">
+        <option value="bank" {% if bank.type=='bank' %}selected{% endif %}>Bank</option>
+        <option value="opay" {% if bank.type=='opay' %}selected{% endif %}>OPay</option>
+        <option value="palmpay" {% if bank.type=='palmpay' %}selected{% endif %}>PalmPay</option>
+        <option value="kuda" {% if bank.type=='kuda' %}selected{% endif %}>Kuda</option>
+        <option value="moniepoint" {% if bank.type=='moniepoint' %}selected{% endif %}>Moniepoint</option>
+        <option value="usdt" {% if bank.type=='usdt' %}selected{% endif %}>USDT</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('bank_name') }}</label>
+      <input type="text" class="form-control" id="b-name" value="{{ bank.bank_name or '' }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('account_number') }}</label>
+      <input type="text" class="form-control" id="b-num" value="{{ bank.account_number or '' }}" inputmode="numeric">
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('account_name') }}</label>
+      <input type="text" class="form-control" id="b-aname" value="{{ bank.account_name or '' }}">
+    </div>
+    <button class="btn btn-success" id="b-btn" onclick="saveBank()">💾 {{ t('save') }}</button>
+  </div>
+
+  <!-- PIN -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;margin-bottom:6px">🔐 {{ t('set_pin') }}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">
+      {% if has_pin %}✅ PIN is active.{% else %}❌ No PIN set.{% endif %}
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('pin') }}</label>
+      <input type="password" class="form-control" id="pin-inp" maxlength="4" inputmode="numeric" placeholder="••••">
+    </div>
+    <button class="btn btn-primary" id="pin-btn" onclick="savePIN()">🔐 {{ t('set_pin') }}</button>
+  </div>
+
+  <!-- REFERRAL LINK -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:12px">🔗 {{ t('referral_link') }}</div>
+    <div class="copy-row">
+      <input type="text" id="ref-link" value="{{ request.host_url }}register?ref={{ user.id }}" readonly>
+      <button class="copy-btn" onclick="copyText(document.getElementById('ref-link').value,'{{ t(\"copy\") }}!')">{{ t('copy') }}</button>
+    </div>
+  </div>
+
+  <!-- LOGOUT -->
+  <a href="/logout" class="btn btn-danger btn-icon">🚪 {{ t('logout') }}</a>
+</div>
+
+<!-- NAV -->
+<nav class="bottom-nav">
+  <a href="/dashboard" class="nav-item"><span class="nav-icon">🏠</span><span>Home</span></a>
+  <a href="/tasks" class="nav-item"><span class="nav-icon">📋</span><span>{{ t('tasks') }}</span></a>
+  <div class="nav-center-wrap"><a href="/balance" class="nav-center">💰</a></div>
+  <a href="/referrals" class="nav-item"><span class="nav-icon">👥</span><span>{{ t('referrals') }}</span></a>
+  <a href="/profile" class="nav-item active"><span class="nav-icon">👤</span><span>{{ t('profile') }}</span></a>
+</nav>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function saveProfile() {
+  const fd = new FormData();
+  fd.append('name', document.getElementById('p-name').value);
+  fd.append('old_password', document.getElementById('p-opw').value);
+  fd.append('new_password', document.getElementById('p-npw').value);
+  await postForm('/profile', fd, document.getElementById('p-btn'));
+}
+async function saveBank() {
+  const fd = new FormData();
+  fd.append('type', document.getElementById('b-type').value);
+  fd.append('bank_name', document.getElementById('b-name').value);
+  fd.append('account_number', document.getElementById('b-num').value);
+  fd.append('account_name', document.getElementById('b-aname').value);
+  await postForm('/save_bank', fd, document.getElementById('b-btn'));
+}
+async function savePIN() {
+  const pin = document.getElementById('pin-inp').value;
+  if (pin.length!==4||!/^\d+$/.test(pin)) { showToast('{{ t("pin_4digits") }}','warning'); return; }
+  const fd = new FormData(); fd.append('pin', pin);
+  await postForm('/set_pin', fd, document.getElementById('pin-btn'));
+  document.getElementById('pin-inp').value = '';
+}
+</script>
+{% endblock %}
