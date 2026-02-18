@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0A2463">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{{ t('referrals') }} - SocialPay</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="page-header">
+  <a href="/dashboard" class="back-btn">←</a>
+  <div class="page-title-wrap"><div class="page-title">👥 {{ t('referrals') }}</div></div>
+</div>
+<div class="page-content" style="padding:14px 14px 80px">
+
+  <div class="stats-row" style="margin-bottom:16px">
+    <div class="stat-card"><div class="stat-val">{{ referrals|length }}</div><div class="stat-lbl">Total</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--green)">₦{{ "%.0f"|format(wallet.referral_bonus_earned) }}</div><div class="stat-lbl">Bonus</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--orange)">{{ referrals|selectattr('bonus_paid','equalto',False)|list|length }}</div><div class="stat-lbl">Pending</div></div>
+  </div>
+
+  <div class="card" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);margin-bottom:14px">
+    <div style="font-size:15px;font-weight:800;margin-bottom:10px">🎁 {{ t('how_referral_works') }}</div>
+    <div style="font-size:13px;color:#92400E;line-height:1.9">
+      1️⃣ Share your referral link<br>
+      2️⃣ Friend registers with your link<br>
+      3️⃣ Friend completes {{ settings.referral_tasks_needed }} tasks<br>
+      4️⃣ You earn <strong>₦{{ settings.referral_bonus }}</strong>!
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px">🔗 {{ t('referral_link') }}</div>
+    <div class="copy-row">
+      <input type="text" id="rl" value="{{ ref_link }}" readonly>
+      <button class="copy-btn" onclick="copyText(document.getElementById('rl').value,'Copied!')">{{ t('copy') }}</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <a href="https://wa.me/?text={{ ref_link|urlencode }}" target="_blank" class="btn btn-success btn-sm btn-icon" style="flex:1">📱 {{ t('share_whatsapp') }}</a>
+      <a href="https://t.me/share/url?url={{ ref_link|urlencode }}" target="_blank" class="btn btn-sm btn-icon" style="flex:1;background:linear-gradient(135deg,#229ed9,#0088cc);color:white">✈️ {{ t('share_telegram') }}</a>
+    </div>
+  </div>
+
+  {% if referrals %}
+  <div class="card" style="padding:0">
+    {% for r in referrals %}
+    <div class="list-item" style="cursor:default">
+      <div style="width:44px;height:44px;border-radius:14px;background:{% if r.bonus_paid %}#D1FAE5{% else %}#FEF3C7{% endif %};display:flex;align-items:center;justify-content:center;font-size:22px">
+        {% if r.bonus_paid %}✅{% else %}⏳{% endif %}
+      </div>
+      <div class="list-info">
+        <div class="list-name">{{ r.name }}</div>
+        <div class="list-sub">{{ r.tasks_done }}/{{ r.tasks_needed }} tasks
+          <div class="progress"><div class="progress-bar" style="width:{{ [r.tasks_done/r.tasks_needed*100,100]|min }}%;background:{% if r.bonus_paid %}var(--green){% else %}var(--yellow){% endif %}"></div></div>
+        </div>
+      </div>
+      <div>{% if r.bonus_paid %}<span class="badge badge-success">+₦{{ settings.referral_bonus }}</span>{% else %}<span class="badge badge-warning">Pending</span>{% endif %}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No Referrals Yet</div><div class="empty-desc">Share your link to start earning!</div></div>
+  {% endif %}
+</div>
+<nav class="bottom-nav">
+  <a href="/dashboard" class="nav-item"><span class="nav-icon">🏠</span><span>Home</span></a>
+  <a href="/tasks" class="nav-item"><span class="nav-icon">📋</span><span>{{ t('tasks') }}</span></a>
+  <div class="nav-center-wrap"><a href="/balance" class="nav-center">💰</a></div>
+  <a href="/referrals" class="nav-item active"><span class="nav-icon">👥</span><span>{{ t('referrals') }}</span></a>
+  <a href="/profile" class="nav-item"><span class="nav-icon">👤</span><span>{{ t('profile') }}</span></a>
+</nav>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

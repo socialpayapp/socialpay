@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0A2463">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{{ t('notifications') }} - SocialPay</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="page-header">
+  <a href="/dashboard" class="back-btn">←</a>
+  <div class="page-title-wrap"><div class="page-title">🔔 {{ t('notifications') }}</div></div>
+</div>
+<div style="padding:14px 14px 40px">
+  {% if notifications %}
+    {% for n in notifications %}
+    <div class="card" style="margin-bottom:10px;border-left:4px solid {% if n.type=='success' %}var(--green){% elif n.type=='error' %}var(--red){% elif n.type=='warning' %}var(--yellow){% else %}var(--accent){% endif %}">
+      <div style="font-size:14px;line-height:1.5">{{ n.message }}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">🕐 {{ n.time[:16] }}</div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-state"><div class="empty-icon">🔔</div><div class="empty-title">{{ t('no_notifications') }}</div></div>
+  {% endif %}
+</div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
