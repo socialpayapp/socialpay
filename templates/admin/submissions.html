@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ t('approve_tasks') }} - Admin{% endblock %}
+{% block content %}
+<div class="page-header" style="background:linear-gradient(135deg,#1a0533,#3d0d6b)">
+  <a href="/admin" class="back-btn" style="background:rgba(255,255,255,0.15)">←</a>
+  <div class="page-title-wrap"><div class="page-title">✅ {{ t('approve_tasks') }}</div></div>
+</div>
+<div class="status-tabs">
+  <a href="?status=pending" class="status-tab {{ 'active' if status=='pending' else '' }}">⏳ Pending</a>
+  <a href="?status=approved" class="status-tab {{ 'active' if status=='approved' else '' }}">✅ Approved</a>
+  <a href="?status=rejected" class="status-tab {{ 'active' if status=='rejected' else '' }}">❌ Rejected</a>
+</div>
+<div style="padding:14px 14px 40px;background:#F0F4FF;min-height:calc(100vh - 110px)">
+  {% if submissions %}
+  {% for s in submissions %}
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+      <div><div style="font-size:14px;font-weight:700">{{ s.user_name }}</div><div style="font-size:12px;color:var(--muted)">{{ s.user_email }}</div></div>
+      <span class="badge {% if s.status=='approved' %}badge-success{% elif s.status=='rejected' %}badge-danger{% else %}badge-warning{% endif %}">{{ s.status }}</span>
+    </div>
+    <div style="background:#F0F4FF;border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Task:</div>
+      <div style="font-size:13px;font-weight:700">{{ s.task_title }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Reward: {% if s.currency=='dollar' %}${{ "%.4f"|format(s.reward) }}{% else %}₦{{ "%.0f"|format(s.reward) }}{% endif %}</div>
+    </div>
+    <div style="background:#F9FAFB;border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Proof:</div>
+      <div style="font-size:13px;word-break:break-all">{{ s.proof }}</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">{{ s.submitted_at[:16] if s.submitted_at else '' }}</div>
+    {% if s.status=='pending' %}
+    <div class="form-group"><input type="text" class="form-control" id="note-{{ s.sub_id }}" placeholder="Note (optional)" style="font-size:13px;padding:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-success btn-sm btn-icon" style="flex:1" id="app-{{ s.sub_id }}" onclick="review('{{ s.sub_id }}','approve')">✅ {{ t('approve') }}</button>
+      <button class="btn btn-danger btn-sm btn-icon" style="flex:1" id="rej-{{ s.sub_id }}" onclick="review('{{ s.sub_id }}','reject')">❌ {{ t('reject') }}</button>
+    </div>
+    {% else %}
+    {% if s.note %}<div class="alert alert-info">💬 {{ s.note }}</div>{% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">No submissions</div></div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function review(sid, action) {
+  const note = document.getElementById(`note-${sid}`)?.value || '';
+  const fd = new FormData();
+  fd.append('sub_id', sid); fd.append('action', action); fd.append('note', note);
+  const btn = document.getElementById(`${action=='approve'?'app':'rej'}-${sid}`);
+  const r = await postForm('/admin/review_submission', fd, btn);
+  if (r?.success) setTimeout(() => location.reload(), 1200);
+}
+</script>
+{% endblock %}
