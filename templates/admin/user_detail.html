@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0A2463">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{{ user.name }} - Admin</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="page-header" style="background:linear-gradient(135deg,#1a0533,#3d0d6b)">
+  <a href="/admin/users" class="back-btn" style="background:rgba(255,255,255,0.15)">←</a>
+  <div class="page-title-wrap"><div class="page-title">👤 {{ user.name }}</div></div>
+</div>
+<div style="padding:14px 14px 40px;background:#F0F4FF;min-height:calc(100vh - 60px)">
+
+  <!-- USER CARD -->
+  <div class="card" style="background:linear-gradient(135deg,var(--primary),var(--primary-2));color:white;margin-bottom:14px">
+    <div style="font-size:13px;opacity:0.8">{{ user.email }}</div>
+    <div style="font-size:16px;font-weight:800;margin-top:4px">{{ user_id }}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      {% if user.banned %}<span class="badge" style="background:rgba(239,35,60,0.4);color:white">🚫 Banned</span>{% endif %}
+      {% if has_pin %}<span class="badge" style="background:rgba(6,214,160,0.3);color:white">🔐 PIN Set</span>{% endif %}
+      {% if user.verified %}<span class="badge" style="background:rgba(6,214,160,0.3);color:white">✅ Verified</span>{% endif %}
+      <span class="badge" style="background:rgba(255,255,255,0.15);color:white">{{ user.created[:10] }}</span>
+    </div>
+  </div>
+
+  <!-- WALLET -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+    <div class="stat-card"><div class="stat-val">₦{{ "%.0f"|format(wallet.naira or 0) }}</div><div class="stat-lbl">Naira</div></div>
+    <div class="stat-card"><div class="stat-val">${{ "%.2f"|format(wallet.dollar or 0) }}</div><div class="stat-lbl">Dollar</div></div>
+    <div class="stat-card"><div class="stat-val">{{ wallet.completed_tasks or 0 }}</div><div class="stat-lbl">✅ Tasks</div></div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;margin-bottom:14px">⚡ {{ t('manage_users') }}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      {% if user.banned %}
+      <button class="btn btn-success btn-sm btn-icon" onclick="doAction('unban')">✅ {{ t('unban_user') }}</button>
+      {% else %}
+      <button class="btn btn-danger btn-sm btn-icon" onclick="doAction('ban')">🚫 {{ t('ban_user') }}</button>
+      {% endif %}
+      <button class="btn btn-outline btn-sm btn-icon" onclick="doAction('reset_pin')">🔐 {{ t('reset_pin') }}</button>
+    </div>
+    <button class="btn btn-sm btn-icon" style="background:linear-gradient(135deg,#a18cd1,#fbc2eb);color:white;width:100%;margin-bottom:10px" onclick="doAction('make_admin')">👑 {{ t('make_admin') }}</button>
+    <div class="form-group" style="margin-bottom:10px">
+      <input type="text" class="form-control" id="msg-inp" placeholder="{{ t('send_message') }}...">
+    </div>
+    <button class="btn btn-primary btn-sm btn-icon" onclick="sendMsg()">📩 {{ t('send_message') }}</button>
+  </div>
+
+  <!-- ADJUST BALANCE -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:14px;font-weight:800;margin-bottom:14px">💰 {{ t('adjust_balance') }}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">{{ t('currency') }}</label>
+        <select class="form-control" id="adj-curr"><option value="naira">₦ Naira</option><option value="dollar">$ Dollar</option></select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Mode</label>
+        <select class="form-control" id="adj-mode"><option value="add">Add (+)</option><option value="set">Set (=)</option></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('amount') }}</label>
+      <input type="number" class="form-control" id="adj-amt" placeholder="0.00">
+    </div>
+    <button class="btn btn-primary" id="adj-btn" onclick="adjustBal()">💰 {{ t('adjust_balance') }}</button>
+  </div>
+
+  <!-- BANK -->
+  {% if bank %}
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">🏦 {{ t('bank_details') }}</div>
+    <div style="font-size:14px;line-height:2">
+      <div>{{ t('payment_type') }}: <strong>{{ bank.type }}</strong></div>
+      <div>{{ t('bank_name') }}: <strong>{{ bank.bank_name }}</strong></div>
+      <div>{{ t('account_number') }}: <strong>{{ bank.account_number }}</strong></div>
+      <div>{{ t('account_name') }}: <strong>{{ bank.account_name }}</strong></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- SUBMISSIONS -->
+  <div class="section-header"><div class="section-title">📋 Submissions ({{ submissions|length }})</div></div>
+  <div class="card" style="padding:0;margin-bottom:14px">
+    {% for s in submissions|sort(attribute='submitted_at',reverse=True) %}
+    <div class="history-item" style="padding:12px 16px">
+      <div class="hist-icon" style="background:{% if s.status=='approved' %}#D1FAE5{% elif s.status=='rejected' %}#FEE2E2{% else %}#FEF3C7{% endif %};border-radius:12px">
+        {% if s.status=='approved' %}✅{% elif s.status=='rejected' %}❌{% else %}⏳{% endif %}
+      </div>
+      <div class="hist-info"><div class="hist-title" style="font-size:13px">{{ s.task_id }}</div><div class="hist-time">{{ s.submitted_at[:16] if s.submitted_at else '' }}</div></div>
+      {% if s.status=='approved' %}<span class="badge badge-success">+₦{{ s.reward }}</span>{% endif %}
+    </div>
+    {% else %}
+    <div style="padding:20px;text-align:center;color:var(--muted)">No submissions</div>
+    {% endfor %}
+  </div>
+
+  <!-- WITHDRAWALS -->
+  <div class="section-header"><div class="section-title">💸 Withdrawals ({{ withdrawals|length }})</div></div>
+  <div class="card" style="padding:0">
+    {% for w in withdrawals|sort(attribute='requested_at',reverse=True) %}
+    <div class="history-item" style="padding:12px 16px">
+      <div style="font-size:20px">{% if w.status=='approved' %}✅{% elif w.status=='rejected' %}❌{% else %}⏳{% endif %}</div>
+      <div class="hist-info"><div class="hist-title">₦{{ "%.2f"|format(w.amount) }}</div><div class="hist-time">{{ w.requested_at[:16] if w.requested_at else '' }}</div></div>
+      <span class="badge {% if w.status=='approved' %}badge-success{% elif w.status=='rejected' %}badge-danger{% else %}badge-warning{% endif %}">{{ w.status }}</span>
+    </div>
+    {% else %}
+    <div style="padding:20px;text-align:center;color:var(--muted)">No withdrawals</div>
+    {% endfor %}
+  </div>
+</div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="/static/js/app.js"></script>
+<script>
+const UID = '{{ user_id }}';
+async function doAction(action) {
+  const msgs = {ban:'Ban this user?',unban:'Unban this user?',reset_pin:'Reset PIN?',make_admin:'Grant admin?'};
+  if (!confirm(msgs[action]||'Confirm?')) return;
+  const fd = new FormData();
+  fd.append('action',action); fd.append('user_id',UID);
+  const r = await postForm('/admin/user/action', fd);
+  if (r?.success) setTimeout(() => location.reload(), 1200);
+}
+async function sendMsg() {
+  const msg = document.getElementById('msg-inp').value.trim();
+  if (!msg) { showToast('Enter a message','warning'); return; }
+  const fd = new FormData();
+  fd.append('action','message'); fd.append('user_id',UID); fd.append('message',msg);
+  await postForm('/admin/user/action', fd);
+  document.getElementById('msg-inp').value = '';
+}
+async function adjustBal() {
+  const fd = new FormData();
+  fd.append('action','adjust_balance'); fd.append('user_id',UID);
+  fd.append('currency',document.getElementById('adj-curr').value);
+  fd.append('amount',document.getElementById('adj-amt').value);
+  fd.append('mode',document.getElementById('adj-mode').value);
+  const r = await postForm('/admin/user/action', fd, document.getElementById('adj-btn'));
+  if (r?.success) setTimeout(() => location.reload(), 1200);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0A2463">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{{ t('manage_tasks') }} - Admin</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="page-header" style="background:linear-gradient(135deg,#1a0533,#3d0d6b)">
+  <a href="/admin" class="back-btn" style="background:rgba(255,255,255,0.15)">←</a>
+  <div class="page-title-wrap"><div class="page-title">📋 {{ t('manage_tasks') }}</div></div>
+  <button onclick="openModal('ctModal')" style="background:var(--yellow);border:none;border-radius:10px;padding:8px 14px;font-weight:800;cursor:pointer;margin-left:auto">+ Add</button>
+</div>
+<div style="padding:14px 14px 40px;background:#F0F4FF;min-height:calc(100vh - 60px)">
+  {% set icons={'instagram':'📸','twitter':'🐦','facebook':'👤','youtube':'▶️','tiktok':'🎵','telegram':'✈️','other':'🌐'} %}
+  {% for task in tasks %}
+  <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:22px;color:white;flex-shrink:0">
+        {{ icons.get(task.platform|lower,'🌐') }}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700;margin-bottom:4px">{{ task.title }}</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">{{ task.platform }} • {{ task.task_type }}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge badge-success">{% if task.currency=='dollar' %}${{ "%.4f"|format(task.reward) }}{% else %}₦{{ "%.0f"|format(task.reward) }}{% endif %}</span>
+          <span class="badge badge-info">{{ task.completed_by|length }}/{{ task.max_users }}</span>
+        </div>
+      </div>
+      <button onclick="delTask('{{ task.id }}')" style="background:#FEE2E2;border:none;border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:16px;flex-shrink:0">🗑️</button>
+    </div>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No tasks yet</div><div class="empty-desc">Click "+ Add" to create a task.</div></div>
+  {% endfor %}
+</div>
+
+<!-- CREATE TASK MODAL -->
+<div class="modal-overlay" id="ctModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">➕ {{ t('create_task') }}</div>
+    <div class="form-group"><label class="form-label">{{ t('task_title') }}</label><input type="text" class="form-control" id="ct-title" placeholder="Task title..."></div>
+    <div class="form-group"><label class="form-label">{{ t('task_desc') }}</label><textarea class="form-control" id="ct-desc" rows="2" placeholder="Description..."></textarea></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-group"><label class="form-label">{{ t('platform') }}</label>
+        <select class="form-control" id="ct-plat">
+          <option value="instagram">Instagram</option><option value="twitter">Twitter/X</option>
+          <option value="facebook">Facebook</option><option value="youtube">YouTube</option>
+          <option value="tiktok">TikTok</option><option value="telegram">Telegram</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">{{ t('task_type') }}</label>
+        <select class="form-control" id="ct-type">
+          <option value="follow">Follow</option><option value="like">Like</option>
+          <option value="comment">Comment</option><option value="share">Share</option>
+          <option value="watch">Watch</option><option value="join_group">Join Group</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">{{ t('link') }}</label><input type="url" class="form-control" id="ct-link" placeholder="https://..."></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div class="form-group"><label class="form-label">{{ t('reward') }}</label><input type="number" class="form-control" id="ct-rew" placeholder="100"></div>
+      <div class="form-group"><label class="form-label">{{ t('currency') }}</label><select class="form-control" id="ct-curr"><option value="naira">₦</option><option value="dollar">$</option></select></div>
+      <div class="form-group"><label class="form-label">{{ t('max_users') }}</label><input type="number" class="form-control" id="ct-max" value="100"></div>
+    </div>
+    <button class="btn btn-primary" id="ct-btn" onclick="createTask()">✅ {{ t('create_task') }}</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="closeModal('ctModal')">{{ t('cancel') }}</button>
+  </div>
+</div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="/static/js/app.js"></script>
+<script>
+async function createTask() {
+  const fd = new FormData();
+  fd.append('title', document.getElementById('ct-title').value);
+  fd.append('description', document.getElementById('ct-desc').value);
+  fd.append('platform', document.getElementById('ct-plat').value);
+  fd.append('task_type', document.getElementById('ct-type').value);
+  fd.append('link', document.getElementById('ct-link').value);
+  fd.append('reward', document.getElementById('ct-rew').value);
+  fd.append('currency', document.getElementById('ct-curr').value);
+  fd.append('max_users', document.getElementById('ct-max').value);
+  const r = await postForm('/admin/create_task', fd, document.getElementById('ct-btn'));
+  if (r?.success) { closeModal('ctModal'); setTimeout(() => location.reload(), 1000); }
+}
+async function delTask(tid) {
+  if (!confirm('Delete this task?')) return;
+  const fd = new FormData(); fd.append('task_id', tid);
+  const r = await postForm('/admin/delete_task', fd);
+  if (r?.success) location.reload();
+}
+</script>
+</body>
+</html>
