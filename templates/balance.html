@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0A2463">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{{ t('balance') }} - SocialPay</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="page-header">
+  <a href="/dashboard" class="back-btn">←</a>
+  <div class="page-title-wrap">
+    <div class="page-title">💰 {{ t('balance') }}</div>
+  </div>
+</div>
+
+<div class="page-content" style="padding:14px 14px 80px">
+  <!-- BALANCE CHIPS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+    <div class="card" style="background:linear-gradient(135deg,#0A2463,#1a3a8f);color:white;text-align:center">
+      <div style="font-size:11px;opacity:0.7;margin-bottom:6px">₦ Naira</div>
+      <div style="font-size:24px;font-weight:800">₦{{ "%.2f"|format(wallet.naira) }}</div>
+    </div>
+    <div class="card" style="background:linear-gradient(135deg,#06D6A0,#0ba360);color:white;text-align:center">
+      <div style="font-size:11px;opacity:0.7;margin-bottom:6px">$ Dollar</div>
+      <div style="font-size:24px;font-weight:800">${{ "%.4f"|format(wallet.dollar) }}</div>
+    </div>
+  </div>
+
+  <!-- ACTION BUTTONS -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto">
+    <button class="btn btn-primary btn-sm btn-icon" onclick="openModal('wdModal')">🏧 {{ t('withdraw') }}</button>
+    <button class="btn btn-sm btn-icon" style="background:linear-gradient(135deg,#4facfe,#00f2fe);color:#000;white-space:nowrap" onclick="openModal('exModal')">💱 {{ t('exchange') }}</button>
+    <button class="btn btn-sm btn-icon" style="background:linear-gradient(135deg,#f093fb,#f5576c);color:white;white-space:nowrap" onclick="openModal('trModal')">💸 {{ t('transfer') }}</button>
+  </div>
+
+  <div class="alert alert-info">ℹ️ Fee: {{ settings.withdrawal_fee_percent }}% | Min: ₦{{ "%.0f"|format(settings.min_withdrawal) }} | Rate: $1 = ₦{{ "%.0f"|format(settings.exchange_rate) }}</div>
+
+  <!-- WITHDRAWALS -->
+  <div class="section-header">
+    <div class="section-title">🏧 {{ t('withdraw') }} {{ t('history') }}</div>
+  </div>
+  <div class="card" style="padding:0;margin-bottom:16px">
+    {% for w in withdrawals %}
+    <div class="history-item" style="padding:14px 16px">
+      <div class="hist-icon" style="background:{% if w.status=='approved' %}#D1FAE5{% elif w.status=='rejected' %}#FEE2E2{% else %}#FEF3C7{% endif %}">
+        {% if w.status=='approved' %}✅{% elif w.status=='rejected' %}❌{% else %}⏳{% endif %}
+      </div>
+      <div class="hist-info">
+        <div class="hist-title">{{ t(w.status) }}</div>
+        <div class="hist-time">{{ w.requested_at[:16] if w.requested_at else '' }}</div>
+      </div>
+      <div class="hist-amount amount-dr">-₦{{ "%.2f"|format(w.amount) }}<br><span style="font-size:11px;color:var(--green)">Net: ₦{{ "%.2f"|format(w.net) }}</span></div>
+    </div>
+    {% else %}
+    <div style="padding:24px;text-align:center;color:var(--muted)">{{ t('history') }}</div>
+    {% endfor %}
+  </div>
+
+  <!-- TRANSFERS -->
+  <div class="section-header">
+    <div class="section-title">💸 {{ t('transfer') }} {{ t('history') }}</div>
+  </div>
+  <div class="card" style="padding:0">
+    {% for tr in (transfers_sent + transfers_recv)|sort(attribute='time', reverse=True) %}
+    <div class="history-item" style="padding:14px 16px">
+      <div class="hist-icon" style="background:{% if tr.sender_id==session.get('user_id') %}#FEE2E2{% else %}#D1FAE5{% endif %}">
+        {% if tr.sender_id==session.get('user_id') %}📤{% else %}📥{% endif %}
+      </div>
+      <div class="hist-info">
+        <div class="hist-title">{% if tr.sender_id==session.get('user_id') %}Sent{% else %}Received{% endif %}</div>
+        <div class="hist-time">{{ tr.time[:16] if tr.time else '' }}</div>
+        {% if tr.status=='reversed' %}<span class="badge badge-warning" style="font-size:10px">Reversed</span>{% endif %}
+      </div>
+      <div class="hist-amount {% if tr.sender_id==session.get('user_id') %}amount-dr{% else %}amount-cr{% endif %}">
+        {% if tr.sender_id==session.get('user_id') %}-{% else %}+{% endif %}₦{{ "%.2f"|format(tr.amount) }}
+      </div>
+    </div>
+    {% else %}
+    <div style="padding:24px;text-align:center;color:var(--muted)">No transfers yet</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="bottom-nav">
+  <a href="/dashboard" class="nav-item"><span class="nav-icon">🏠</span><span>Home</span></a>
+  <a href="/tasks" class="nav-item"><span class="nav-icon">📋</span><span>{{ t('tasks') }}</span></a>
+  <div class="nav-center-wrap"><a href="/balance" class="nav-center" style="background:linear-gradient(135deg,var(--green),#0ba360)">💰</a></div>
+  <a href="/referrals" class="nav-item"><span class="nav-icon">👥</span><span>{{ t('referrals') }}</span></a>
+  <a href="/profile" class="nav-item"><span class="nav-icon">👤</span><span>{{ t('profile') }}</span></a>
+</nav>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="wdModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🏧 {{ t('withdraw_money') }}</div>
+    <div style="font-size:12px;color:var(--muted);background:#f0f4ff;padding:10px 12px;border-radius:10px;margin-bottom:14px">💡 Fee: {{ settings.withdrawal_fee_percent }}% | Min: ₦{{ "%.0f"|format(settings.min_withdrawal) }}</div>
+    <div class="form-group"><label class="form-label">{{ t('currency') }}</label>
+      <select class="form-control" id="wd2-curr" onchange="toggleWd2()">
+        <option value="naira">₦ Naira</option>
+        <option value="dollar">$ Dollar / Crypto</option>
+      </select>
+    </div>
+    <!-- NAIRA -->
+    <div id="wd2-naira">
+      <div class="form-group"><label class="form-label">Select Bank</label>
+        <select class="form-control" id="wd2-bank-sel" onchange="onWd2Bank()">
+          <option value="">-- Choose Bank --</option>
+          <optgroup label="💳 Mobile Money">
+            <option>OPay</option><option>PalmPay</option><option>Kuda Bank</option>
+            <option>Moniepoint</option><option>Carbon</option><option>FairMoney</option><option>Chipper Cash</option>
+          </optgroup>
+          <optgroup label="🏦 Commercial Banks">
+            <option>Access Bank</option><option>GTBank</option><option>First Bank</option>
+            <option>Zenith Bank</option><option>UBA</option><option>Ecobank</option>
+            <option>Fidelity Bank</option><option>Sterling Bank</option><option>Union Bank</option>
+            <option>Wema Bank</option><option>Polaris Bank</option><option>Unity Bank</option>
+            <option>Heritage Bank</option><option>Keystone Bank</option><option>Stanbic IBTC</option>
+            <option>Standard Chartered</option><option>Citibank Nigeria</option><option>Jaiz Bank</option>
+          </optgroup>
+          <option value="OTHER">✏️ Other (Type below)</option>
+        </select>
+      </div>
+      <div class="form-group" id="wd2-bank-other-wrap" style="display:none">
+        <label class="form-label">Bank Name</label>
+        <input type="text" class="form-control" id="wd2-bank-other" placeholder="Enter bank name...">
+      </div>
+      <div class="form-group"><label class="form-label">Account Number</label>
+        <input type="text" class="form-control" id="wd2-acct" placeholder="0123456789" inputmode="numeric" maxlength="10">
+      </div>
+      <div class="form-group"><label class="form-label">Account Name</label>
+        <input type="text" class="form-control" id="wd2-aname" placeholder="Your full account name">
+      </div>
+    </div>
+    <!-- CRYPTO -->
+    <div id="wd2-crypto" style="display:none">
+      <div class="form-group"><label class="form-label">Crypto Wallet</label>
+        <select class="form-control" id="wd2-crypto-sel" onchange="onWd2Crypto()">
+          <option value="">-- Choose Wallet --</option>
+          <optgroup label="📱 Crypto Apps">
+            <option>Binance</option><option>Bitget</option><option>Bybit</option>
+            <option>OKX</option><option>KuCoin</option><option>Coinbase</option>
+            <option>Trust Wallet</option><option>Metamask</option><option>Remitano</option>
+            <option>Luno</option><option>Noones</option><option>Paxful</option>
+          </optgroup>
+          <option value="OTHER">✏️ Other (Type below)</option>
+        </select>
+      </div>
+      <div class="form-group" id="wd2-crypto-other-wrap" style="display:none">
+        <label class="form-label">Wallet Name</label>
+        <input type="text" class="form-control" id="wd2-crypto-other" placeholder="Enter wallet name...">
+      </div>
+      <div class="form-group"><label class="form-label">Address / Username / UID</label>
+        <input type="text" class="form-control" id="wd2-addr" placeholder="USDT address or username">
+      </div>
+      <div class="form-group"><label class="form-label">Network / Coin</label>
+        <select class="form-control" id="wd2-net">
+          <option>USDT TRC20</option><option>USDT BEP20</option><option>USDT ERC20</option>
+          <option>BTC</option><option>ETH</option><option>BNB</option><option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">{{ t('amount') }}</label>
+      <input type="number" class="form-control" id="wd2-amt" placeholder="0.00">
+    </div>
+    <button class="btn btn-primary" id="wd2-btn" onclick="doWd()">💸 {{ t('submit') }}</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="closeModal('wdModal')">{{ t('cancel') }}</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💱 {{ t('exchange_currency') }}</div>
+    <div class="form-group"><label class="form-label">From</label><select class="form-control" id="ex2-from"><option value="naira">₦ Naira → $ Dollar</option><option value="dollar">$ Dollar → ₦ Naira</option></select></div>
+    <div class="form-group"><label class="form-label">{{ t('amount') }}</label><input type="number" class="form-control" id="ex2-amt" placeholder="0.00"></div>
+    <button class="btn btn-primary" id="ex2-btn" onclick="doEx()">{{ t('exchange') }}</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="closeModal('exModal')">{{ t('cancel') }}</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="trModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💸 {{ t('send_money') }}</div>
+    <div class="form-group"><label class="form-label">{{ t('receiver_id') }}</label><input type="text" class="form-control" id="tr2-recv" placeholder="SP12345678" oninput="lookupUser(this.value,'tr2-name')"><div id="tr2-name" style="font-size:13px;font-weight:700;margin-top:6px"></div></div>
+    <div class="form-group"><label class="form-label">{{ t('amount') }} (₦)</label><input type="number" class="form-control" id="tr2-amt" placeholder="0.00"></div>
+    <div class="form-group"><label class="form-label">{{ t('pin') }}</label><input type="password" class="form-control" id="tr2-pin" maxlength="4" inputmode="numeric" placeholder="••••"></div>
+    <button class="btn btn-primary" id="tr2-btn" onclick="doTr()">{{ t('send_now') }}</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="closeModal('trModal')">{{ t('cancel') }}</button>
+  </div>
+</div>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="/static/js/app.js"></script>
+<script>
+function toggleWd2(){const c=document.getElementById('wd2-curr').value;document.getElementById('wd2-naira').style.display=c==='naira'?'':'none';document.getElementById('wd2-crypto').style.display=c==='dollar'?'':'none';}
+function onWd2Bank(){document.getElementById('wd2-bank-other-wrap').style.display=document.getElementById('wd2-bank-sel').value==='OTHER'?'':'none';}
+function onWd2Crypto(){document.getElementById('wd2-crypto-other-wrap').style.display=document.getElementById('wd2-crypto-sel').value==='OTHER'?'':'none';}
+function buildWd2Info(){
+  const c=document.getElementById('wd2-curr').value;
+  if(c==='naira'){
+    const sel=document.getElementById('wd2-bank-sel').value;
+    const bank=sel==='OTHER'?document.getElementById('wd2-bank-other').value.trim():sel;
+    const acct=document.getElementById('wd2-acct').value.trim();
+    const nm=document.getElementById('wd2-aname').value.trim();
+    if(!bank||!acct||!nm){showToast('Fill all bank details','warning');return null;}
+    return `Bank: ${bank}\nAccount: ${acct}\nName: ${nm}`;
+  } else {
+    const sel=document.getElementById('wd2-crypto-sel').value;
+    const w=sel==='OTHER'?document.getElementById('wd2-crypto-other').value.trim():sel;
+    const addr=document.getElementById('wd2-addr').value.trim();
+    const net=document.getElementById('wd2-net').value;
+    if(!w||!addr){showToast('Fill wallet details','warning');return null;}
+    return `Wallet: ${w}\nAddress: ${addr}\nNetwork: ${net}`;
+  }
+}
+async function doWd() {
+  const bi=buildWd2Info(); if(!bi) return;
+  const fd = new FormData();
+  fd.append('currency',document.getElementById('wd2-curr').value);
+  fd.append('amount',document.getElementById('wd2-amt').value);
+  fd.append('bank_info',bi);
+  const r = await postForm('/withdraw',fd,document.getElementById('wd2-btn'));
+  if(r?.success){closeModal('wdModal');setTimeout(()=>location.reload(),1400);}
+}
+async function doEx() {
+  const fd = new FormData();
+  fd.append('from_currency',document.getElementById('ex2-from').value);
+  fd.append('amount',document.getElementById('ex2-amt').value);
+  const r = await postForm('/exchange',fd,document.getElementById('ex2-btn'));
+  if(r?.success){closeModal('exModal');setTimeout(()=>location.reload(),1400);}
+}
+async function doTr() {
+  const fd = new FormData();
+  fd.append('receiver_id',document.getElementById('tr2-recv').value.trim());
+  fd.append('amount',document.getElementById('tr2-amt').value);
+  fd.append('pin',document.getElementById('tr2-pin').value);
+  const r = await postForm('/transfer',fd,document.getElementById('tr2-btn'));
+  if(r?.success){closeModal('trModal');setTimeout(()=>location.reload(),1400);}
+}
+</script>
+</body>
+</html>
