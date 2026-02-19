@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0A2463">
+  <title>{{ t('tasks') }} - SocialPay</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .upload-area{border:2px dashed var(--border);border-radius:14px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:12px}
+    .upload-area:hover,.upload-area.has-file{border-color:var(--accent);background:#EEF2FF}
+    .upload-area input[type=file]{display:none}
+    .upload-preview{max-width:100%;border-radius:10px;margin-top:10px;display:none}
+    .proof-tabs{display:flex;gap:6px;margin-bottom:12px}
+    .proof-tab{flex:1;padding:10px;border:2px solid var(--border);border-radius:10px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;background:white;transition:all .2s}
+    .proof-tab.active{border-color:var(--accent);background:#EEF2FF;color:var(--primary)}
+  </style>
+</head>
+<body>
+<div class="page-header">
+  <a href="/dashboard" class="back-btn">←</a>
+  <div class="page-title-wrap">
+    <div class="page-title">📋 {{ t('available_tasks') }}</div>
+    <div class="page-subtitle">{{ tasks|length }} {{ t('tasks') }}</div>
+  </div>
+</div>
+
+<div class="page-content" style="padding:14px 14px 80px">
+  {% if tasks %}
+    {% set icons = {'instagram':'📸','twitter':'🐦','facebook':'👤','youtube':'▶️','tiktok':'🎵','telegram':'✈️','other':'🌐'} %}
+    {% for task in tasks %}
+    <div class="task-card" onclick="openTaskModal('{{ task.id }}')">
+      <div class="task-icon plat-{{ task.platform|lower }}">{{ icons.get(task.platform|lower,'🌐') }}</div>
+      <div class="task-info">
+        <div class="task-title">{{ task.title }}</div>
+        <div class="task-plat">{{ task.platform|title }} • {{ task.task_type|replace('_',' ')|title }}</div>
+        <div class="task-reward">💰 {% if task.currency=='dollar' %}${{ "%.4f"|format(task.reward) }}{% else %}₦{{ "%.0f"|format(task.reward) }}{% endif %}</div>
+      </div>
+      <div class="task-slots">{{ task.max_users - task.completed_by|length }} left</div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">{{ t('no_tasks') }}</div>
+      <div class="empty-desc">{{ t('no_tasks_desc') }}</div>
+    </div>
+  {% endif %}
+</div>
+
+<nav class="bottom-nav">
+  <a href="/dashboard" class="nav-item"><span class="nav-icon">🏠</span><span>Home</span></a>
+  <a href="/tasks" class="nav-item active"><span class="nav-icon">📋</span><span>{{ t('tasks') }}</span></a>
+  <div class="nav-center-wrap"><a href="/balance" class="nav-center">💰</a></div>
+  <a href="/referrals" class="nav-item"><span class="nav-icon">👥</span><span>{{ t('referrals') }}</span></a>
+  <a href="/profile" class="nav-item"><span class="nav-icon">👤</span><span>{{ t('profile') }}</span></a>
+</nav>
+
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="task-modal-body"></div>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+<script src="/static/js/app.js"></script>
+<script>
+const TASKS = {{ tasks|tojson }};
+const ICONS = {instagram:'📸',twitter:'🐦',facebook:'👤',youtube:'▶️',tiktok:'🎵',telegram:'✈️',other:'🌐'};
+let currentScreenshot = '';
+let currentProofMode = 'text';
+
+function openTaskModal(tid) {
+  const task = TASKS.find(t => t.id === tid);
+  if (!task) return;
+  const icon = ICONS[task.platform?.toLowerCase()] || '🌐';
+  const rew = task.currency==='dollar' ? `$${parseFloat(task.reward).toFixed(4)}` : `₦${parseFloat(task.reward).toFixed(0)}`;
+  const slots = task.max_users - (task.completed_by?.length||0);
+  currentScreenshot = '';
+  currentProofMode = 'text';
+
+  document.getElementById('task-modal-body').innerHTML = `
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,var(--primary),var(--accent));display:inline-flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:10px">${icon}</div>
+      <div style="font-size:17px;font-weight:800">${task.title}</div>
+      <div style="color:var(--muted);font-size:12px;margin-top:3px">${task.platform} • ${(task.task_type||'').replace(/_/g,' ')}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="card" style="background:linear-gradient(135deg,#E8F9F1,#D1FAE5);text-align:center;padding:12px">
+        <div style="font-size:11px;color:#065F46;font-weight:700">💰 Reward</div>
+        <div style="font-size:20px;font-weight:800;color:#065F46">${rew}</div>
+      </div>
+      <div class="card" style="background:#F0F4FF;text-align:center;padding:12px">
+        <div style="font-size:11px;color:var(--muted);font-weight:700">👥 Slots Left</div>
+        <div style="font-size:20px;font-weight:800">${slots}</div>
+      </div>
+    </div>
+    <div class="card" style="background:#F9FAFB;margin-bottom:14px;padding:13px">
+      <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:5px">📝 Description</div>
+      <div style="font-size:13px;line-height:1.6">${task.description||'Complete this task as instructed.'}</div>
+    </div>
+    ${task.link ? `<a href="${task.link}" target="_blank" class="btn btn-outline btn-icon" style="margin-bottom:14px">🔗 Open Task Link</a>` : ''}
+
+    <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">📤 Submit Proof</div>
+
+    <div class="proof-tabs">
+      <div class="proof-tab active" id="tab-text" onclick="switchProofTab('text')">📝 Text / Link</div>
+      <div class="proof-tab" id="tab-screenshot" onclick="switchProofTab('screenshot')">📸 Screenshot</div>
+    </div>
+
+    <div id="proof-text-area">
+      <textarea class="form-control" id="proof-${task.id}" rows="3" placeholder="Paste your link, username, or proof text here..."></textarea>
+    </div>
+
+    <div id="proof-screenshot-area" style="display:none">
+      <div class="upload-area" id="upload-area-${task.id}" onclick="document.getElementById('file-${task.id}').click()">
+        <input type="file" id="file-${task.id}" accept="image/*" onchange="handleScreenshot(this,'${task.id}')">
+        <div style="font-size:36px;margin-bottom:8px">📸</div>
+        <div style="font-size:13px;font-weight:700;color:var(--muted)">Tap to upload screenshot</div>
+        <div style="font-size:11px;color:#bbb;margin-top:4px">JPG, PNG, GIF supported</div>
+      </div>
+      <img id="preview-${task.id}" class="upload-preview" alt="Preview">
+      <textarea class="form-control" id="proof-ss-${task.id}" rows="2" placeholder="Add note (optional)..." style="margin-top:8px"></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="sub-btn-${task.id}" onclick="submitTask('${task.id}')" style="margin-top:12px">✅ Submit for Review</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="closeModal('taskModal')">Cancel</button>
+  `;
+  openModal('taskModal');
+}
+
+function switchProofTab(mode) {
+  currentProofMode = mode;
+  document.getElementById('proof-text-area').style.display = mode==='text' ? '' : 'none';
+  document.getElementById('proof-screenshot-area').style.display = mode==='screenshot' ? '' : 'none';
+  document.getElementById('tab-text').classList.toggle('active', mode==='text');
+  document.getElementById('tab-screenshot').classList.toggle('active', mode==='screenshot');
+}
+
+function handleScreenshot(input, tid) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Screenshot too large! Max 5MB', 'warning');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    currentScreenshot = e.target.result;
+    const preview = document.getElementById(`preview-${tid}`);
+    preview.src = currentScreenshot;
+    preview.style.display = 'block';
+    document.getElementById(`upload-area-${tid}`).classList.add('has-file');
+    showToast('Screenshot loaded!', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function submitTask(tid) {
+  let proof = '';
+  if (currentProofMode === 'text') {
+    proof = document.getElementById(`proof-${tid}`)?.value.trim();
+    if (!proof) { showToast('Please enter your proof text or link', 'warning'); return; }
+  } else {
+    if (!currentScreenshot) { showToast('Please upload a screenshot', 'warning'); return; }
+    const note = document.getElementById(`proof-ss-${tid}`)?.value.trim();
+    proof = note || 'Screenshot submitted';
+  }
+
+  const fd = new FormData();
+  fd.append('task_id', tid);
+  fd.append('proof', proof);
+  if (currentScreenshot) fd.append('screenshot', currentScreenshot);
+
+  const r = await postForm('/submit_task', fd, document.getElementById(`sub-btn-${tid}`));
+  if (r?.success) { closeModal('taskModal'); setTimeout(() => location.reload(), 1200); }
+}
+</script>
+</body>
+</html>
