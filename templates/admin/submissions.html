@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0A2463">
+  <title>{{ t('approve_tasks') }} - Admin</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .ss-thumb{width:100%;max-height:140px;object-fit:cover;border-radius:10px;border:2px solid var(--accent);cursor:pointer;transition:opacity .2s}
+    .ss-thumb:hover{opacity:.85}
+    .ss-label{font-size:11px;color:var(--accent);font-weight:700;margin-top:4px;text-align:center}
+    .proof-box{background:#F9FAFB;border-radius:10px;padding:12px;margin-bottom:10px;border:1px solid #E5E7EB}
+    .proof-text{font-size:13px;word-break:break-all;white-space:pre-wrap;line-height:1.6}
+  </style>
+</head>
+<body>
+<div class="page-header" style="background:linear-gradient(135deg,#1a0533,#3d0d6b)">
+  <a href="/admin" class="back-btn" style="background:rgba(255,255,255,0.15)">←</a>
+  <div class="page-title-wrap"><div class="page-title">✅ {{ t('approve_tasks') }}</div></div>
+</div>
+
+<div class="status-tabs">
+  <a href="?status=pending"  class="status-tab {{ 'active' if status=='pending' else '' }}">⏳ Pending</a>
+  <a href="?status=approved" class="status-tab {{ 'active' if status=='approved' else '' }}">✅ Approved</a>
+  <a href="?status=rejected" class="status-tab {{ 'active' if status=='rejected' else '' }}">❌ Rejected</a>
+</div>
+
+<div style="padding:14px 14px 80px;background:#F0F4FF;min-height:calc(100vh - 110px)">
+  {% if submissions %}
+  {% for s in submissions %}
+  <div class="card" style="margin-bottom:14px">
+
+    <!-- Header: User info + status -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <div style="font-size:15px;font-weight:800">{{ s.user_name }}</div>
+        <div style="font-size:12px;color:var(--muted)">{{ s.user_email }}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">{{ s.submitted_at[:16] if s.submitted_at else '' }}</div>
+      </div>
+      <span class="badge {% if s.status=='approved' %}badge-success{% elif s.status=='rejected' %}badge-danger{% else %}badge-warning{% endif %}">
+        {{ '✅' if s.status=='approved' else ('❌' if s.status=='rejected' else '⏳') }} {{ s.status }}
+      </span>
+    </div>
+
+    <!-- Task info -->
+    <div style="background:linear-gradient(135deg,#F0F4FF,#E8EEFF);border-radius:10px;padding:12px;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Task</div>
+      <div style="font-size:14px;font-weight:700">{{ s.task_title }}</div>
+      <div style="font-size:13px;color:var(--green);font-weight:800;margin-top:4px">
+        Reward: {% if s.currency=='dollar' %}${{ "%.4f"|format(s.reward) }}{% else %}₦{{ "%.0f"|format(s.reward) }}{% endif %}
+      </div>
+    </div>
+
+    <!-- Proof text -->
+    {% if s.proof %}
+    <div class="proof-box">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">📝 Proof / Link</div>
+      <div class="proof-text">{{ s.proof }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Screenshot -->
+    {% if s.screenshot %}
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">📷 Screenshot</div>
+      <img class="ss-thumb" src="{{ s.screenshot }}" onclick="openSS('{{ loop.index0 }}')" alt="Screenshot">
+      <div class="ss-label">👆 Tap to view full size</div>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    {% if s.status=='pending' %}
+    <div class="form-group" style="margin-top:10px">
+      <input type="text" class="form-control" id="note-{{ s.sub_id }}" placeholder="Note to user (optional)" style="font-size:13px;padding:10px">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-success btn-sm btn-icon" style="flex:1" id="app-{{ s.sub_id }}" onclick="review('{{ s.sub_id }}','approve')">✅ {{ t('approve') }}</button>
+      <button class="btn btn-danger btn-sm btn-icon" style="flex:1" id="rej-{{ s.sub_id }}" onclick="review('{{ s.sub_id }}','reject')">❌ {{ t('reject') }}</button>
+    </div>
+    {% else %}
+    {% if s.note %}<div class="alert alert-info" style="margin-top:10px">💬 {{ s.note }}</div>{% endif %}
+    {% endif %}
+
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <div class="empty-title">No {{ status }} submissions</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Full screenshot modal -->
+<div class="modal-overlay" id="ssModal" onclick="closeSS()" style="background:rgba(0,0,0,.92);align-items:center;justify-content:center">
+  <div style="padding:16px;width:100%;max-width:480px" onclick="event.stopPropagation()">
+    <img id="ssModalImg" src="" style="width:100%;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.7);display:block">
+    <button class="btn btn-outline" style="width:100%;margin-top:14px;background:rgba(255,255,255,.15);color:white;border-color:rgba(255,255,255,.3)" onclick="closeSS()">✕ Close</button>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+<script src="/static/js/app.js"></script>
+<script>
+// Collect all screenshots for full-view
+const screenshots = [{% for s in submissions %}{% if s.screenshot %}'{{ s.screenshot }}',{% endif %}{% endfor %}];
+const ssMap = {};
+{% for s in submissions %}{% if s.screenshot %}ssMap['{{ loop.index0 }}'] = '{{ s.screenshot }}';{% endif %}{% endfor %}
+
+function openSS(idx){
+  const src = ssMap[idx];
+  if(!src) return;
+  document.getElementById('ssModalImg').src = src;
+  document.getElementById('ssModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeSS(){
+  document.getElementById('ssModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function review(sid, action) {
+  const note = document.getElementById(`note-${sid}`)?.value || '';
+  const fd = new FormData();
+  fd.append('sub_id', sid); fd.append('action', action); fd.append('note', note);
+  const btn = document.getElementById(`${action=='approve'?'app':'rej'}-${sid}`);
+  const r = await postForm('/admin/review_submission', fd, btn);
+  if (r?.success) setTimeout(() => location.reload(), 1200);
+}
+</script>
+</body>
+</html>
