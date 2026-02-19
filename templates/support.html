@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0A2463">
+  <title>Support - SocialPay</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .ticket-card{background:white;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 12px rgba(10,36,99,.08);border-left:4px solid var(--accent)}
+    .ticket-card.closed{border-left-color:#9CA3AF;opacity:.8}
+    .ticket-status{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px}
+    .status-open{background:#DCFCE7;color:#166534}
+    .status-closed{background:#F3F4F6;color:#6B7280}
+    .reply-bubble{border-radius:14px;padding:12px 14px;margin-bottom:8px;font-size:13px;line-height:1.6}
+    .reply-user{background:#EEF2FF;margin-right:30px}
+    .reply-admin{background:linear-gradient(135deg,#1a0533,#3d0d6b);color:white;margin-left:30px}
+    .reply-meta{font-size:11px;opacity:.7;margin-bottom:4px;font-weight:600}
+    .cat-badge{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;background:#E0E7FF;color:#3730A3;font-weight:700;margin-bottom:8px}
+  </style>
+</head>
+<body>
+
+<div class="page-header" style="background:linear-gradient(135deg,#1a0533,#3d0d6b)">
+  <a href="/dashboard" class="back-btn" style="background:rgba(255,255,255,0.15)">←</a>
+  <div class="page-title-wrap">
+    <div class="page-title">🎫 Support</div>
+    <div class="page-subtitle">We're here to help</div>
+  </div>
+</div>
+
+<div style="padding:14px 14px 100px;background:#F0F4FF;min-height:calc(100vh - 60px)">
+
+  <!-- SUPPORT OPTIONS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
+    
+    <!-- Telegram Support -->
+    <a href="https://t.me/Socialpaysupport/" target="_blank" 
+       style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#0088cc,#006699);border-radius:16px;padding:20px 12px;text-decoration:none;box-shadow:0 4px 16px rgba(0,136,204,.3)">
+      <div style="font-size:36px">✈️</div>
+      <div style="color:white;font-size:13px;font-weight:800;text-align:center">Telegram Support</div>
+      <div style="color:rgba(255,255,255,.8);font-size:11px;text-align:center">Fast reply via Telegram</div>
+    </a>
+
+    <!-- In-App Support -->
+    <button onclick="openModal('newTicketModal')"
+       style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#1a0533,#3d0d6b);border-radius:16px;padding:20px 12px;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(26,5,51,.3)">
+      <div style="font-size:36px">🎫</div>
+      <div style="color:white;font-size:13px;font-weight:800;text-align:center">In-App Support</div>
+      <div style="color:rgba(255,255,255,.8);font-size:11px;text-align:center">Submit a support ticket</div>
+    </button>
+
+  </div>
+
+  <!-- MY TICKETS -->
+  {% if tickets %}
+  <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">My Tickets ({{ tickets|length }})</div>
+
+  {% for tk in tickets %}
+  <div class="ticket-card {{ 'closed' if tk.status=='closed' else '' }}">
+
+    <!-- Ticket header -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+      <div style="flex:1;margin-right:10px">
+        <div class="cat-badge">{{ tk.category }}</div>
+        <div style="font-size:15px;font-weight:800;line-height:1.3">{{ tk.subject }}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">{{ tk.created[:16] if tk.created else '' }}</div>
+      </div>
+      <span class="ticket-status {{ 'status-open' if tk.status=='open' else 'status-closed' }}">
+        {{ '🟢 Open' if tk.status=='open' else '⚫ Closed' }}
+      </span>
+    </div>
+
+    <!-- Original message -->
+    <div style="background:#F8FAFF;border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px;line-height:1.6;color:#374151">
+      {{ tk.message }}
+    </div>
+
+    <!-- Replies -->
+    {% if tk.replies %}
+    <div style="margin-bottom:10px">
+      {% for rep in tk.replies %}
+      <div class="reply-bubble {{ 'reply-admin' if rep.from=='admin' else 'reply-user' }}">
+        <div class="reply-meta">{{ '👑 SocialPay Support' if rep.from=='admin' else '👤 You' }} • {{ rep.time[:16] if rep.time else '' }}</div>
+        {{ rep.message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Reply input (only if open) -->
+    {% if tk.status == 'open' %}
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input type="text" class="form-control" id="rep-{{ tk.id }}" placeholder="Type your reply..." style="flex:1;font-size:13px">
+      <button class="btn btn-primary btn-sm" id="repbtn-{{ tk.id }}" onclick="sendReply('{{ tk.id }}')">Send</button>
+    </div>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🎫</div>
+    <div class="empty-title">No tickets yet</div>
+    <div class="empty-desc">Submit a ticket and our team will reply within 24 hours.</div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <a href="/dashboard" class="nav-item"><span class="nav-icon">🏠</span><span>Home</span></a>
+  <a href="/tasks" class="nav-item"><span class="nav-icon">📋</span><span>Tasks</span></a>
+  <div class="nav-center-wrap"><a href="/balance" class="nav-center">💰</a></div>
+  <a href="/referrals" class="nav-item"><span class="nav-icon">👥</span><span>Refs</span></a>
+  <a href="/support" class="nav-item active"><span class="nav-icon">🎫</span><span>Support</span></a>
+</nav>
+
+<!-- NEW TICKET MODAL -->
+<div class="modal-overlay" id="newTicketModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🎫 New Support Ticket</div>
+
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select class="form-control" id="tk-cat">
+        <option value="withdrawal">💸 Withdrawal Issue</option>
+        <option value="task">📋 Task / Submission Issue</option>
+        <option value="account">👤 Account Issue</option>
+        <option value="referral">👥 Referral Issue</option>
+        <option value="transfer">🔄 Transfer Issue</option>
+        <option value="general">💬 General Question</option>
+        <option value="other">📌 Other</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Subject</label>
+      <input type="text" class="form-control" id="tk-subject" placeholder="Brief description of your issue">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Message</label>
+      <textarea class="form-control" id="tk-message" rows="4" placeholder="Describe your issue in detail..."></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="tk-btn" onclick="submitTicket()">🎫 Submit Ticket</button>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="closeModal('newTicketModal')">Cancel</button>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+<script src="/static/js/app.js"></script>
+<script>
+async function submitTicket() {
+  const cat     = document.getElementById('tk-cat').value;
+  const subject = document.getElementById('tk-subject').value.trim();
+  const message = document.getElementById('tk-message').value.trim();
+  if (!subject || !message) { showToast('Fill all fields', 'warning'); return; }
+  const fd = new FormData();
+  fd.append('category', cat);
+  fd.append('subject', subject);
+  fd.append('message', message);
+  const r = await postForm('/support', fd, document.getElementById('tk-btn'));
+  if (r?.success) {
+    closeModal('newTicketModal');
+    document.getElementById('tk-subject').value = '';
+    document.getElementById('tk-message').value = '';
+    setTimeout(() => location.reload(), 1200);
+  }
+}
+
+async function sendReply(tid) {
+  const msg = document.getElementById(`rep-${tid}`).value.trim();
+  if (!msg) { showToast('Type a message', 'warning'); return; }
+  const fd = new FormData();
+  fd.append('message', msg);
+  const r = await postForm(`/support/reply/${tid}`, fd, document.getElementById(`repbtn-${tid}`));
+  if (r?.success) setTimeout(() => location.reload(), 1000);
+}
+</script>
+</body>
+</html>
